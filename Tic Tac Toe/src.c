@@ -21,8 +21,8 @@ const int CELL_SIZE = 180;
 const int BOARD_PADDING = 30;
 
 /* Colors */
-SDL_Color COLOR_BG = {30, 30, 30, 255};
-SDL_Color COLOR_GRID = {200, 200, 200, 255};
+SDL_Color COLOR_BG = {230, 230, 230, 255};
+SDL_Color COLOR_GRID = {0, 0, 0, 255};
 SDL_Color COLOR_X = {200, 30, 30, 255};
 SDL_Color COLOR_O = {30, 30, 200, 255};
 SDL_Color COLOR_BUTTON = {50, 50, 50, 255};
