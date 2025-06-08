@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Pathfinding Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans">
+  <div class="p-4 max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold text-center mb-4">AI Pathfinding Visualizer</h1>
+
+    <div id="instruction" class="text-lg text-center text-blue-700 font-medium mb-4">
+      Click on a square to select the <strong>starting point</strong>.
+    </div>
+
+    <div class="flex justify-center gap-4 mb-4">
+      <button id="confirmBtn" class="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50" disabled>
+        Confirm
+      </button>
+      <button id="resetBtn" class="bg-red-600 text-white px-4 py-2 rounded">
+        Reset
+      </button>
+    </div>
+
+    <div id="grid" class="grid gap-1 w-max mx-auto mb-6" style="grid-template-columns: repeat(20, 1.5rem);"></div>
+
+    <div id="algorithmControls" class="hidden text-center space-y-4">
+      <div>
+        <label for="algorithmSelect" class="block text-lg font-semibold mb-1">Choose an algorithm:</label>
+        <select id="algorithmSelect" class="p-2 rounded border border-gray-300">
+          <option value="dijkstra">Dijkstra's Algorithm</option>
+          <option value="aStar">A* Search</option>
+          <option value="bfs">Breadth-First Search</option>
+          <option value="dfs">Depth-First Search</option>
+          <option value="greedy">Greedy Best-First Search</option>
+        </select>
+      </div>
+      <button id="runAlgorithm" class="bg-blue-600 text-white px-4 py-2 rounded">Run Algorithm</button>
+    </div>
+  </div>
+
+  <script>
+    const grid = document.getElementById('grid');
+    const instruction = document.getElementById('instruction');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const algorithmControls = document.getElementById('algorithmControls');
+    const runBtn = document.getElementById('runAlgorithm');
+    const algorithmSelect = document.getElementById('algorithmSelect');
+
+    const ROWS = 20;
+    const COLS = 20;
+    const state = {
+      mode: 'start',
+      start: null,
+      end: null,
+      confirmed: false,
+      mouseDown: false,
+      drawingBarrier: true
+    };
+
+    const cells = [];
+
+    function createGrid() {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const div = document.createElement('div');
+          div.className = 'w-6 h-6 bg-white border border-gray-300 text-xs text-center';
+          div.dataset.row = row;
+          div.dataset.col = col;
+
+          div.addEventListener('mousedown', (e) => {
+            state.mouseDown = true;
+            onCellClick(row, col);
+            const cell = cells[row][col];
+            state.drawingBarrier = (cell.type !== 'barrier');
+          });
+
+          div.addEventListener('mouseover', () => {
+            if (state.mouseDown && state.mode === 'barrier') {
+              applyBarrierChange(row, col);
+            }
+          });
+
+          div.addEventListener('mouseup', () => {
+            state.mouseDown = false;
+          });
+
+          grid.appendChild(div);
+
+          if (!cells[row]) cells[row] = [];
+          cells[row][col] = {
+            div,
+            type: 'empty',
+          };
+        }
+      }
+    }
+
+    document.body.addEventListener('mouseup', () => state.mouseDown = false);
+
+    function applyBarrierChange(row, col) {
+      const cell = cells[row][col];
+      if ((row === state.start[0] && col === state.start[1]) || (row === state.end[0] && col === state.end[1])) return;
+      if (state.drawingBarrier) {
+        setCellType(row, col, 'barrier');
+      } else {
+        setCellType(row, col, 'empty');
+      }
+    }
+
+    function onCellClick(row, col) {
+      const cell = cells[row][col];
+      if (state.confirmed) return;
+
+      if (state.mode === 'start') {
+        if (state.start) setCellType(...state.start, 'empty');
+        setCellType(row, col, 'start');
+        state.start = [row, col];
+        instruction.innerText = 'Click on a square to select the ending point.';
+        state.mode = 'end';
+      } else if (state.mode === 'end') {
+        if (state.end) setCellType(...state.end, 'empty');
+        if (row === state.start[0] && col === state.start[1]) return;
+        setCellType(row, col, 'end');
+        state.end = [row, col];
+        instruction.innerText = 'Click to add/remove barriers. Then click Confirm.';
+        state.mode = 'barrier';
+        confirmBtn.disabled = false;
+      } else if (state.mode === 'barrier') {
+        applyBarrierChange(row, col);
+      }
+    }
+
+    function setCellType(row, col, type, label = '') {
+      const cell = cells[row][col];
+      cell.type = type;
+      const div = cell.div;
+      div.className = 'w-6 h-6 border text-xs text-center leading-6';
+      div.innerText = label;
+      if (type === 'empty') div.classList.add('bg-white', 'border-gray-300');
+      if (type === 'start') div.classList.add('bg-green-500', 'border-green-700');
+      if (type === 'end') div.classList.add('bg-red-500', 'border-red-700');
+      if (type === 'barrier') div.classList.add('bg-black');
+      if (type === 'visited') div.classList.add('bg-yellow-400');
+      if (type === 'path') div.classList.add('bg-blue-400');
+    }
+
+    confirmBtn.addEventListener('click', () => {
+      state.confirmed = true;
+      confirmBtn.disabled = true;
+      instruction.innerText = 'Select an algorithm and click Run to visualize.';
+      algorithmControls.classList.remove('hidden');
+    });
+
+    resetBtn.addEventListener('click', () => {
+      grid.innerHTML = '';
+      algorithmControls.classList.add('hidden');
+      confirmBtn.disabled = true;
+      Object.assign(state, {
+        mode: 'start',
+        start: null,
+        end: null,
+        confirmed: false,
+        mouseDown: false,
+        drawingBarrier: true
+      });
+      instruction.innerText = 'Click on a square to select the starting point.';
+      createGrid();
+    });
+
+    runBtn.addEventListener('click', () => {
+      resetVisited();
+      const algorithm = algorithmSelect.value;
+      if (!state.start || !state.end) return;
+      runAlgorithm(algorithm);
+    });
+
+    function resetVisited() {
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          const type = cells[row][col].type;
+          if (['visited', 'path'].includes(type)) {
+            setCellType(row, col, 'empty');
+          } else if (type === 'start') {
+            setCellType(row, col, 'start');
+          } else if (type === 'end') {
+            setCellType(row, col, 'end');
+          }
+        }
+      }
+    }
+
+    async function runAlgorithm(name) {
+      const directions = [
+        [0, 1], [1, 0], [0, -1], [-1, 0]
+      ];
+
+      const [startRow, startCol] = state.start;
+      const [endRow, endCol] = state.end;
+
+      const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+      const parent = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+
+      function heuristic(r, c) {
+        return Math.abs(r - endRow) + Math.abs(c - endCol);
+      }
+
+      const compare = (a, b) => a[0] - b[0];
+
+      let queue = [];
+      if (name === 'dijkstra' || name === 'aStar' || name === 'greedy') {
+        queue.push([0, [startRow, startCol]]);
+      } else {
+        queue.push([startRow, startCol]);
+      }
+
+      const cost = Array.from({ length: ROWS }, () => Array(COLS).fill(Infinity));
+      cost[startRow][startCol] = 0;
+      visited[startRow][startCol] = true;
+
+      while (queue.length) {
+        let current;
+        if (name === 'dfs') {
+          current = queue.pop();
+        } else if (name === 'dijkstra' || name === 'aStar' || name === 'greedy') {
+          queue.sort(compare);
+          current = queue.shift()[1];
+        } else {
+          current = queue.shift();
+        }
+
+        const [r, c] = current;
+
+        if (!(r === startRow && c === startCol)) {
+          setCellType(r, c, 'visited');
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+
+        if (r === endRow && c === endCol) break;
+
+        for (const [dr, dc] of directions) {
+          const nr = r + dr;
+          const nc = c + dc;
+
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && cells[nr][nc].type !== 'barrier') {
+            const newCost = cost[r][c] + 1;
+            const h = heuristic(nr, nc);
+            let shouldUpdate = false;
+
+            if (name === 'dijkstra' && newCost < cost[nr][nc]) {
+              cost[nr][nc] = newCost;
+              queue.push([newCost, [nr, nc]]);
+              shouldUpdate = true;
+            } else if (name === 'aStar' && newCost + h < cost[nr][nc]) {
+              cost[nr][nc] = newCost + h;
+              queue.push([newCost + h, [nr, nc]]);
+              shouldUpdate = true;
+            } else if (name === 'greedy' && h < cost[nr][nc]) {
+              cost[nr][nc] = h;
+              queue.push([h, [nr, nc]]);
+              shouldUpdate = true;
+            } else if (!visited[nr][nc] && (name === 'bfs' || name === 'dfs')) {
+              queue.push([nr, nc]);
+              shouldUpdate = true;
+            }
+
+            if (shouldUpdate) {
+              parent[nr][nc] = [r, c];
+              visited[nr][nc] = true;
+              if (name === 'aStar' || name === 'greedy') setCellType(nr, nc, 'visited', h);
+            }
+          }
+        }
+      }
+
+      let curr = [endRow, endCol];
+      while (curr && !(curr[0] === startRow && curr[1] === startCol)) {
+        const [r, c] = curr;
+        if (!(r === endRow && c === endCol)) setCellType(r, c, 'path');
+        else setCellType(r, c, 'end');
+        curr = parent[r][c];
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+    }
+
+    createGrid();
+  </script>
+</body>
+
+</html>
