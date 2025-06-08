@@ -242,14 +242,14 @@ void runSelectedAlgorithm() {
             }
 
             if (update) {
-                parent[nr][nc] = current;
-                visited[nr][nc] = true;
-                if (grid[nr][nc].type != END) {
-                    grid[nr][nc].type = VISITED;
-                    if (strcmp(algoNames[selectedAlgo], "A*") == 0 || strcmp(algoNames[selectedAlgo], "Greedy") == 0)
-                        grid[nr][nc].heuristic = heuristic((Point){nr, nc}, end);
-                }
-            }
+    parent[nr][nc] = current;
+    visited[nr][nc] = true;
+    if (nr != end.row || nc != end.col) { // Only mark as VISITED if not the end cell
+        grid[nr][nc].type = VISITED;
+        if (strcmp(algoNames[selectedAlgo], "A*") == 0 || strcmp(algoNames[selectedAlgo], "Greedy") == 0)
+            grid[nr][nc].heuristic = heuristic((Point){nr, nc}, end);
+    }
+}
         }
 
         SDL_Delay(10);
@@ -303,16 +303,11 @@ void handleClick(int x, int y) {
         strcpy(instructionText, "Click to add/remove barriers. Then click Confirm.");
         mode = BARRIER_MODE;
         buttons[5].disabled = false;
-    } else if (mode == BARRIER_MODE) {
-        if (r == start.row && c == start.col) return;
-        if (r == end.row && c == end.col) return;
-        if (mouseDown) {
-            grid[r][c].type = drawingBarrier ? BARRIER : EMPTY;
-        } else {
-            drawingBarrier = (grid[r][c].type != BARRIER);
-            grid[r][c].type = drawingBarrier ? BARRIER : EMPTY;
-        }
-    }
+   } else if (mode == BARRIER_MODE) {
+    if (r == start.row && c == start.col) return;
+    if (r == end.row && c == end.col) return;
+    grid[r][c].type = (grid[r][c].type == BARRIER) ? EMPTY : BARRIER;
+}
 }
 
 void setupButtons() {
