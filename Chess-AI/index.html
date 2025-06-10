@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚔️ Epic AI vs AI Chess Showdown</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(to bottom, #1e3a8a, #3b82f6);
+      font-family: 'Arial', sans-serif;
+    }
+    .square {
+      width: 5rem;
+      height: 5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      position: relative;
+      transition: background-color 0.2s;
+    }
+    .light-square { background-color: #f0d9b5; }
+    .dark-square { background-color: #b58863; }
+    .selected { background-color: rgba(34, 197, 94, 0.5) !important; }
+    .legal-move { background-color: rgba(59, 130, 246, 0.3); }
+    .highlight {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 0, 0.5);
+      animation: fadeOut 1s forwards;
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
+    .panel {
+      max-height: 300px;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .btn {
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    .btn:hover {
+      transform: scale(1.05);
+    }
+    .progress-bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress {
+      height: 100%;
+      background: #22c55e;
+      transition: width 0.3s;
+    }
+    @media (max-width: 640px) {
+      .square { width: 3rem; height: 3rem; font-size: 2rem; }
+      .board { width: 24rem; }
+    }
+  </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center p-4">
+  <h1 class="text-5xl font-extrabold mb-6 drop-shadow">⚔️ Epic AI vs AI Chess Showdown</h1>
+  <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 mb-8 w-full max-w-5xl bg-white/10 p-4 rounded-lg shadow-lg">
+    <div class="flex-1">
+      <h2 class="text-2xl font-semibold mb-2">White AI Config</h2>
+      <label class="block mb-2">Simulations
+        <input type="number" id="whiteSims" min="10" max="5000" value="100" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+      <label class="block mb-2">Exploration (0.5–2)
+        <input type="number" id="whiteC" min="0.5" max="2" step="0.1" value="1.4" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+      <label class="block mb-2">Learning Rate (0–1)
+        <input type="number" id="whiteAlpha" min="0" max="1" step="0.01" value="0.1" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-semibold mb-2">Black AI Config</h2>
+      <label class="block mb-2">Simulations
+        <input type="number" id="blackSims" min="10" max="5000" value="100" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+      <label class="block mb-2">Exploration (0.5–2)
+        <input type="number" id="blackC" min="0.5" max="2" step="0.1" value="1.4" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+      <label class="block mb-2">Learning Rate (0–1)
+        <input type="number" id="blackAlpha" min="0" max="1" step="0.01" value="0.1" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+    </div>
+    <div class="flex-1">
+      <h2 class="text-2xl font-semibold mb-2">Game Config</h2>
+      <label class="block mb-2">Move Time (ms)
+        <input type="number" id="moveTime" min="100" max="5000" value="500" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+      <label class="block mb-2">Randomness (0–1)
+        <input type="number" id="randomness" min="0" max="1" step="0.01" value="0.1" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+      </label>
+      <label class="block mb-2">Opponent Modeling
+        <input type="checkbox" id="opponentModeling" checked class="ml-2" />
+      </label>
+    </div>
+  </div>
+
+  <div id="board" class="grid grid-cols-8 gap-0 border-4 border-gray-700 rounded-lg shadow-xl board"></div>
+  <div class="progress-bar w-full max-w-[40rem] mt-2">
+    <div id="progress" class="progress" style="width: 0%"></div>
+  </div>
+
+  <div class="flex space-x-4 my-4">
+    <button id="startBtn" class="btn bg-gradient-to-r from-green-500 to-green-700 text-white font-bold px-6 py-3 rounded-lg shadow">Start</button>
+    <button id="stopBtn" class="btn bg-gradient-to-r from-yellow-500 to-yellow-700 text-white font-bold px-6 py-3 rounded-lg shadow" disabled>Stop</button>
+    <button id="resetBtn" class="btn bg-gradient-to-r from-red-500 to-red-700 text-white font-bold px-6 py-3 rounded-lg shadow">Reset</button>
+  </div>
+
+  <p class="mt-2 text-xl font-medium" id="status">Select White's first move or click "Start" to begin.</p>
+  <div class="flex flex-col md:flex-row w-full max-w-5xl space-y-4 md:space-y-0 md:space-x-4 mt-4">
+    <div class="w-full md:w-1/2">
+      <h2 class="text-2xl font-semibold mb-2 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">Move History ▼</h2>
+      <div id="moveList" class="panel p-4 hidden"></div>
+    </div>
+    <div class="w-full md:w-1/2">
+      <h2 class="text-2xl font-semibold mb-2 cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">Debug Log ▼</h2>
+      <pre id="debug" class="panel p-4 hidden"></pre>
+    </div>
+  </div>
+
+  <script>
+    const pieceSymbols = {
+      p: "♟", r: "♜", n: "♞", b: "♝", q: "♛", k: "♚",
+      P: "♙", R: "♖", N: "♘", B: "♗", Q: "♕", K: "♔"
+    };
+
+    const boardEl = document.getElementById("board");
+    const statusEl = document.getElementById("status");
+    const debugEl = document.getElementById("debug");
+    const moveListEl = document.getElementById("moveList");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const progressEl = document.getElementById("progress");
+
+    let game = new Chess();
+    let playing = false;
+    let lastMoveSquares = [];
+    let moveHistory = [];
+    let whiteQTable = new Map();
+    let blackQTable = new Map();
+    let opponentMoveFrequencies = new Map();
+    let selectedSquare = null;
+    let legalMoves = [];
+    let firstMoveMade = false;
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      const board = game.board();
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const square = document.createElement("div");
+          square.className = `square ${(i + j) % 2 === 0 ? "light-square" : "dark-square"}`;
+          square.dataset.row = i;
+          square.dataset.col = j;
+          const piece = board[i][j];
+          if (piece) square.textContent = pieceSymbols[piece.color === "w" ? piece.type.toUpperCase() : piece.type];
+          if (lastMoveSquares.some(([x, y]) => x === i && y === j)) {
+            const overlay = document.createElement("div");
+            overlay.className = "highlight";
+            square.appendChild(overlay);
+          }
+          if (selectedSquare && selectedSquare.row === i && selectedSquare.col === j) {
+            square.classList.add("selected");
+          }
+          if (legalMoves.some(m => m.to === String.fromCharCode(97 + j) + (8 - i))) {
+            square.classList.add("legal-move");
+          }
+          square.addEventListener("click", handleSquareClick);
+          boardEl.appendChild(square);
+        }
+      }
+    }
+
+    function handleSquareClick(e) {
+      if (playing || firstMoveMade || game.turn() !== "w") return;
+      const row = parseInt(e.target.dataset.row);
+      const col = parseInt(e.target.dataset.col);
+      const square = String.fromCharCode(97 + col) + (8 - row);
+
+      if (selectedSquare) {
+        const from = String.fromCharCode(97 + selectedSquare.col) + (8 - selectedSquare.row);
+        const move = legalMoves.find(m => m.from === from && m.to === square);
+        if (move) {
+          game.move(move);
+          lastMoveSquares = [[selectedSquare.row, selectedSquare.col], [row, col]];
+          updateMoveHistory(move);
+          firstMoveMade = true;
+          statusEl.textContent = "White's move made! Click 'Start' for AI duel.";
+          renderBoard();
+          startBtn.disabled = false;
+        }
+        selectedSquare = null;
+        legalMoves = [];
+        renderBoard();
+      } else {
+        const piece = game.get(square);
+        if (piece && piece.color === "w") {
+          selectedSquare = { row, col };
+          legalMoves = game.moves({ square, verbose: true });
+          renderBoard();
+        }
+      }
+    }
+
+    function updateStatus() {
+      const movesPlayed = moveHistory.length;
+      const progress = Math.min((movesPlayed / 100) * 100, 100);
+      progressEl.style.width = `${progress}%`;
+      if (game.in_checkmate()) {
+        statusEl.textContent = `Checkmate! ${game.turn() === "w" ? "Black" : "White"} wins!`;
+        playing = false;
+        updateQLearning(game.turn() === "w" ? -1000 : 1000);
+      } else if (game.in_draw()) {
+        statusEl.textContent = "Game Over: Draw!";
+        playing = false;
+        updateQLearning(0);
+      } else if (game.in_check()) {
+        statusEl.textContent = `${game.turn() === "w" ? "White" : "Black"} is in check!`;
+      } else if (!firstMoveMade && game.turn() === "w") {
+        statusEl.textContent = "Select White's first move by clicking a piece and target square.";
+      } else {
+        statusEl.textContent = `${game.turn() === "w" ? "White" : "Black"}'s turn...`;
+      }
+    }
+
+    function updateMoveHistory(move) {
+      if (move) {
+        moveHistory.push(move.san);
+        const moveNum = Math.ceil(moveHistory.length / 2);
+        const moveText = moveHistory.length % 2 === 1 ? `${moveNum}. ${move.san}` : `${move.san}`;
+        const moveEl = document.createElement("div");
+        moveEl.textContent = moveText;
+        moveListEl.appendChild(moveEl);
+        moveListEl.scrollTop = moveListEl.scrollHeight;
+      }
+    }
+
+    function evaluateBoard() {
+      const pieceValues = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
+      let score = 0;
+      const board = game.board();
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const piece = board[i][j];
+          if (piece) {
+            const value = pieceValues[piece.type] || 0;
+            score += piece.color === "w" ? value : -value;
+            if (piece.type === "p") {
+              const rankBonus = piece.color === "w" ? i : 7 - i;
+              score += piece.color === "w" ? rankBonus * 5 : -rankBonus * 5;
+              if (j >= 3 && j <= 4 && i >= 3 && i <= 4) score += piece.color === "w" ? 10 : -10;
+            } else if (piece.type === "n" || piece.type === "b") {
+              const distToCenter = Math.max(3 - i, i - 4, 3 - j, j - 4);
+              score += piece.color === "w" ? (3 - distToCenter) * 10 : -(3 - distToCenter) * 10;
+            } else if (piece.type === "k" && game.history().length < 20) {
+              score += piece.color === "w" ? -20 : 20;
+            }
+          }
+        }
+      }
+      const moves = game.moves().length;
+      score += game.turn() === "w" ? moves * 2 : -moves * 2;
+      const stateKey = getStateKey();
+      const qTable = game.turn() === "w" ? whiteQTable : blackQTable;
+      const qValue = qTable.get(stateKey) || 0;
+      score += qValue;
+      if (document.getElementById("opponentModeling").checked) {
+        const oppMoves = opponentMoveFrequencies.get(stateKey) || new Map();
+        let oppBonus = 0;
+        oppMoves.forEach((count, move) => {
+          if (game.moves().includes(move)) oppBonus += count * 5;
+        });
+        score += game.turn() === "w" ? oppBonus : -oppBonus;
+      }
+      if (game.in_checkmate()) score = game.turn() === "w" ? -100000 : 100000;
+      if (game.in_draw()) score = 0;
+      return score;
+    }
+
+    function getStateKey() {
+      return game.fen().split(" ").slice(0, 2).join(" ");
+    }
+
+    function updateQLearning(reward) {
+      const qTable = game.turn() === "w" ? whiteQTable : blackQTable;
+      const stateKey = getStateKey();
+      const lastMove = moveHistory[moveHistory.length - 1];
+      if (lastMove) {
+        const currentQ = qTable.get(`${stateKey}:${lastMove}`) || 0;
+        const alpha = parseFloat(game.turn() === "w" ? document.getElementById("whiteAlpha").value : document.getElementById("blackAlpha").value);
+        const gamma = 0.9;
+        const maxFutureQ = Math.max(...(game.moves().map(move => {
+          const copy = new Chess(game.fen());
+          copy.move(move);
+          const nextState = copy.fen().split(" ").slice(0, 2).join(" ");
+          return qTable.get(`${nextState}:${move}`) || 0;
+        })));
+        const newQ = (1 - alpha) * currentQ + alpha * (reward + gamma * maxFutureQ);
+        qTable.set(`${stateKey}:${lastMove}`, newQ);
+      }
+    }
+
+    function updateOpponentModel(move) {
+      if (!document.getElementById("opponentModeling").checked) return;
+      const stateKey = getStateKey();
+      const oppMoves = opponentMoveFrequencies.get(stateKey) || new Map();
+      oppMoves.set(move.san, (oppMoves.get(move.san) || 0) + 1);
+      opponentMoveFrequencies.set(stateKey, oppMoves);
+    }
+
+    class MCTSNode {
+      constructor(state, move = null, parent = null) {
+        this.state = state;
+        this.move = move;
+        this.parent = parent;
+        this.children = [];
+        this.visits = 0;
+        this.wins = 0;
+        this.untriedMoves = this.sortMoves(state.moves({ verbose: true }));
+      }
+
+      sortMoves(moves) {
+        return moves.sort((a, b) => {
+          const aScore = (a.captured ? 10 : 0) + (a.san.includes("+") ? 5 : 0);
+          const bScore = (b.captured ? 10 : 0) + (b.san.includes("+") ? 5 : 0);
+          return bScore - aScore;
+        });
+      }
+
+      selectChild(C) {
+        return this.children.reduce((a, b) => {
+          const aScore = (a.wins / (a.visits || 1)) + C * Math.sqrt(Math.log(this.visits || 1) / (a.visits || 1));
+          const bScore = (b.wins / (b.visits || 1)) + C * Math.sqrt(Math.log(this.visits || 1) / (b.visits || 1));
+          return aScore > bScore ? a : b;
+        });
+      }
+
+      expand() {
+        const move = this.untriedMoves.shift();
+        const childGame = new Chess(this.state.fen());
+        childGame.move(move);
+        const child = new MCTSNode(childGame, move, this);
+        this.children.push(child);
+        return child;
+      }
+
+      simulate(randomness) {
+        let simGame = new Chess(this.state.fen());
+        let depth = 0;
+        const maxDepth = 20;
+        while (!simGame.game_over() && depth < maxDepth) {
+          const moves = this.sortMoves(simGame.moves({ verbose: true }));
+          const moveIdx = Math.random() < randomness ? Math.floor(Math.random() * moves.length) : 0;
+          simGame.move(moves[moveIdx]);
+          depth++;
+        }
+        const score = evaluateBoard.call({ ...simGame, turn: () => this.state.turn() });
+        return this.state.turn() === "w" ? score : -score;
+      }
+
+      backpropagate(score) {
+        let node = this;
+        while (node) {
+          node.visits++;
+          node.wins += score > 0 ? 1 : score < 0 ? 0 : 0.5;
+          node = node.parent;
+        }
+      }
+    }
+
+    function mctsSearch(fen, simulations, C, randomness) {
+      try {
+        const root = new MCTSNode(new Chess(fen));
+        if (root.untriedMoves.length === 0) {
+          debugEl.textContent = "No legal moves available!";
+          return null;
+        }
+
+        for (let i = 0; i < simulations; i++) {
+          let node = root;
+          let simGame = new Chess(fen);
+          while (node.untriedMoves.length === 0 && node.children.length > 0) {
+            node = node.selectChild(C);
+            simGame.move(node.move);
+          }
+          if (node.untriedMoves.length > 0) {
+            node = node.expand();
+            simGame.move(node.move);
+          }
+          const score = node.simulate(randomness);
+          node.backpropagate(score);
+        }
+
+        const bestChild = root.children.reduce((a, b) => (a.visits > b.visits ? a : b));
+        return {
+          move: bestChild.move,
+          stats: `MCTS: ${simulations} simulations, best move: ${bestChild.move.san} (visits: ${bestChild.visits}, win rate: ${(bestChild.wins / bestChild.visits).toFixed(2)})`,
+        };
+      } catch (err) {
+        debugEl.textContent = `MCTS error: ${err.message}`;
+        return null;
+      }
+    }
+
+    async function aiMove() {
+      if (!playing || game.game_over()) {
+        playing = false;
+        startBtn.disabled = !firstMoveMade;
+        stopBtn.disabled = true;
+        return;
+      }
+      const simulations = parseInt(game.turn() === "w" ? document.getElementById("whiteSims").value : document.getElementById("blackSims").value);
+      const C = parseFloat(game.turn() === "w" ? document.getElementById("whiteC").value : document.getElementById("blackC").value);
+      const randomness = parseFloat(document.getElementById("randomness").value);
+      debugEl.textContent = `Calculating move for ${game.turn() === "w" ? "White" : "Black"}...`;
+      const result = mctsSearch(game.fen(), simulations, C, randomness);
+      if (result && result.move) {
+        const { move, stats } = result;
+        const fromRow = 8 - parseInt(move.from[1]);
+        const fromCol = move.from.charCodeAt(0) - 97;
+        const toRow = 8 - parseInt(move.to[1]);
+        const toCol = move.to.charCodeAt(0) - 97;
+        lastMoveSquares = [[fromRow, fromCol], [toRow, toCol]];
+        game.move(move);
+        updateMoveHistory(move);
+        updateOpponentModel(move);
+        updateQLearning(evaluateBoard());
+        renderBoard();
+        updateStatus();
+        debugEl.textContent = stats;
+        if (playing && !game.game_over()) {
+          setTimeout(aiMove, parseInt(document.getElementById("moveTime").value));
+        } else {
+          playing = false;
+          startBtn.disabled = !firstMoveMade;
+          stopBtn.disabled = true;
+        }
+      } else {
+        debugEl.textContent = "No valid move returned by AI!";
+        statusEl.textContent = "AI failed to select a move!";
+        playing = false;
+        startBtn.disabled = !firstMoveMade;
+        stopBtn.disabled = true;
+      }
+    }
+
+    async function playGame() {
+      if (!playing || !firstMoveMade) {
+        statusEl.textContent = !firstMoveMade ? "Please select White's first move!" : "Game stopped.";
+        playing = false;
+        startBtn.disabled = !firstMoveMade;
+        stopBtn.disabled = true;
+        return;
+      }
+      renderBoard();
+      updateStatus();
+      aiMove();
+    }
+
+    startBtn.onclick = () => {
+      if (!playing && firstMoveMade) {
+        const whiteSims = parseInt(document.getElementById("whiteSims").value);
+        const blackSims = parseInt(document.getElementById("blackSims").value);
+        const moveTime = parseInt(document.getElementById("moveTime").value);
+        const whiteC = parseFloat(document.getElementById("whiteC").value);
+        const blackC = parseFloat(document.getElementById("blackC").value);
+        const whiteAlpha = parseFloat(document.getElementById("whiteAlpha").value);
+        const blackAlpha = parseFloat(document.getElementById("blackAlpha").value);
+        const randomness = parseFloat(document.getElementById("randomness").value);
+        if (whiteSims < 10 || blackSims < 10 || moveTime < 100 || whiteC < 0.5 || blackC < 0.5 || whiteAlpha < 0 || blackAlpha < 0 || randomness < 0) {
+          statusEl.textContent = "Invalid settings! Check simulations (≥10), exploration (≥0.5), learning rate (0–1), move time (≥100ms).";
+          return;
+        }
+        playing = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        playGame();
+      } else if (!firstMoveMade) {
+        statusEl.textContent = "Please select White's first move before starting!";
+      }
+    };
+
+    stopBtn.onclick = () => {
+      playing = false;
+      startBtn.disabled = !firstMoveMade;
+      stopBtn.disabled = true;
+      statusEl.textContent = "Game paused. Click 'Start' to resume or 'Reset' to start over.";
+    };
+
+    resetBtn.onclick = () => {
+      playing = false;
+      firstMoveMade = false;
+      game = new Chess();
+      lastMoveSquares = [];
+      moveHistory = [];
+      selectedSquare = null;
+      legalMoves = [];
+      moveListEl.innerHTML = "";
+      debugEl.textContent = "";
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      renderBoard();
+      updateStatus();
+    };
+
+    renderBoard();
+    updateStatus();
+    stopBtn.disabled = true;
+  </script>
+</body>
+</html>
