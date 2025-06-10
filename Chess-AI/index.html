@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>⚔️ Epic AI vs AI Chess Showdown</title>
+  <title>AI vs AI Chess Showdown</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
   <style>
     body {
-      background: linear-gradient(to bottom, #1e3a8a, #3b82f6);
       font-family: 'Arial', sans-serif;
     }
     .square {
@@ -49,6 +48,7 @@
     }
     .btn:hover {
       transform: scale(1.05);
+      opacity: 0.8;
     }
     .progress-bar {
       height: 8px;
@@ -67,13 +67,13 @@
     }
   </style>
 </head>
-<body class="text-white min-h-screen flex flex-col items-center p-4">
-  <h1 class="text-5xl font-extrabold mb-6 drop-shadow">⚔️ Epic AI vs AI Chess Showdown</h1>
+<body class="min-h-screen flex flex-col items-center p-4">
+  <h1 class="text-5xl font-extrabold mb-6 drop-shadow">AI vs AI Chess Showdown</h1>
   <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 mb-8 w-full max-w-5xl bg-white/10 p-4 rounded-lg shadow-lg">
     <div class="flex-1">
       <h2 class="text-2xl font-semibold mb-2">White AI Config</h2>
       <label class="block mb-2">Simulations
-        <input type="number" id="whiteSims" min="10" max="5000" value="100" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+        <input type="number" id="whiteSims" min="1" max="5000" value="10" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
       </label>
       <label class="block mb-2">Exploration (0.5–2)
         <input type="number" id="whiteC" min="0.5" max="2" step="0.1" value="1.4" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
@@ -85,7 +85,7 @@
     <div class="flex-1">
       <h2 class="text-2xl font-semibold mb-2">Black AI Config</h2>
       <label class="block mb-2">Simulations
-        <input type="number" id="blackSims" min="10" max="5000" value="100" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+        <input type="number" id="blackSims" min="1" max="5000" value="10" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
       </label>
       <label class="block mb-2">Exploration (0.5–2)
         <input type="number" id="blackC" min="0.5" max="2" step="0.1" value="1.4" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
@@ -97,7 +97,7 @@
     <div class="flex-1">
       <h2 class="text-2xl font-semibold mb-2">Game Config</h2>
       <label class="block mb-2">Move Time (ms)
-        <input type="number" id="moveTime" min="100" max="5000" value="500" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
+        <input type="number" id="moveTime" min="10" max="5000" value="100" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
       </label>
       <label class="block mb-2">Randomness (0–1)
         <input type="number" id="randomness" min="0" max="1" step="0.01" value="0.1" class="w-full px-3 py-2 bg-gray-800 text-white rounded" />
@@ -114,9 +114,9 @@
   </div>
 
   <div class="flex space-x-4 my-4">
-    <button id="startBtn" class="btn bg-gradient-to-r from-green-500 to-green-700 text-white font-bold px-6 py-3 rounded-lg shadow">Start</button>
-    <button id="stopBtn" class="btn bg-gradient-to-r from-yellow-500 to-yellow-700 text-white font-bold px-6 py-3 rounded-lg shadow" disabled>Stop</button>
-    <button id="resetBtn" class="btn bg-gradient-to-r from-red-500 to-red-700 text-white font-bold px-6 py-3 rounded-lg shadow">Reset</button>
+    <button id="startBtn" class="btn bg-green-500 text-white font-bold px-6 py-3 rounded-lg shadow">Start</button>
+    <button id="stopBtn" class="btn bg-red-500 text-white font-bold px-6 py-3 rounded-lg shadow" disabled>Stop</button>
+    <button id="resetBtn" class="btn bg-blue-500 text-white font-bold px-6 py-3 rounded-lg shadow">Reset</button>
   </div>
 
   <p class="mt-2 text-xl font-medium" id="status">Select White's first move or click "Start" to begin.</p>
@@ -481,8 +481,8 @@
         const whiteAlpha = parseFloat(document.getElementById("whiteAlpha").value);
         const blackAlpha = parseFloat(document.getElementById("blackAlpha").value);
         const randomness = parseFloat(document.getElementById("randomness").value);
-        if (whiteSims < 10 || blackSims < 10 || moveTime < 100 || whiteC < 0.5 || blackC < 0.5 || whiteAlpha < 0 || blackAlpha < 0 || randomness < 0) {
-          statusEl.textContent = "Invalid settings! Check simulations (≥10), exploration (≥0.5), learning rate (0–1), move time (≥100ms).";
+        if (whiteSims < 1 || blackSims < 1 || moveTime < 10 || whiteC < 0.5 || blackC < 0.5 || whiteAlpha < 0 || blackAlpha < 0 || randomness < 0) {
+          statusEl.textContent = "Invalid settings! Check simulations (≥1), exploration (≥0.5), learning rate (0–1), move time (≥10ms).";
           return;
         }
         playing = true;
