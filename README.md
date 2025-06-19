@@ -1,4 +1,4 @@
-# Cooper Black's AI Projects
+# AI Projects
 Collection of random A.I. applets and programs aimed at testing and implementing both currently existing or novel algorithms
 
 1) Minimax algorithm
